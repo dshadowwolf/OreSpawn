@@ -1,100 +1,106 @@
 package com.mcmoddev.orespawn;
 
+import net.minecraft.block.Block;
+import net.minecraft.block.Blocks;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.RegistryEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.InterModComms;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
+import net.minecraftforge.fml.event.lifecycle.InterModProcessEvent;
+import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.forgespi.language.ModFileScanData;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.objectweb.asm.Type;
 
-import com.mcmoddev.orespawn.api.os3.OS3API;
+import com.mcmoddev.orespawn.api.OS3API;
+import com.mcmoddev.orespawn.api.os3plugin;
 import com.mcmoddev.orespawn.api.plugin.PluginLoader;
-import com.mcmoddev.orespawn.commands.AddOreCommand;
-import com.mcmoddev.orespawn.commands.ClearChunkCommand;
-import com.mcmoddev.orespawn.commands.DumpBiomesCommand;
-import com.mcmoddev.orespawn.commands.WriteConfigsCommand;
-import com.mcmoddev.orespawn.data.Config;
-import com.mcmoddev.orespawn.data.Constants;
-import com.mcmoddev.orespawn.data.FeatureRegistry;
-import com.mcmoddev.orespawn.impl.os3.OS3APIImpl;
-import com.mcmoddev.orespawn.worldgen.FlatBedrock;
-import com.mcmoddev.orespawn.worldgen.OreSpawnFeatureGenerator;
+import com.mcmoddev.orespawn.utils.Helpers;
+import com.mcmoddev.orespawn.utils.TypeUtils;
 
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.Mod.EventHandler;
-import net.minecraftforge.fml.common.Mod.Instance;
-import net.minecraftforge.fml.common.event.FMLFingerprintViolationEvent;
-import net.minecraftforge.fml.common.event.FMLInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
-import net.minecraftforge.fml.common.registry.GameRegistry;
+import java.util.stream.Collectors;
 
-/**
- * Main entry point for the mod, everything runs through this.
- *
- * @author DShadowWolf &lt;dshadowwolf@gmail.com&gt;
- */
-
-@Mod(modid = Constants.MODID,
-		name = Constants.NAME,
-		version = Constants.VERSION,
-		acceptedMinecraftVersions = "[1.12,)",
-		certificateFingerprint = "@FINGERPRINT@")
-
+@Mod("orespawn")
 public class OreSpawn {
+    // Directly reference a log4j logger.
+    public static final Logger LOGGER = LogManager.getLogger();
 
-	@Instance
-	public static OreSpawn instance;
+    public OreSpawn() {
+        // Register the setup method for modloading
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::setup);
+        // Register the enqueueIMC method for modloading
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::enqueueIMC);
+        // Register the processIMC method for modloading
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::processIMC);
+        // Register the doClientStuff method for modloading
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::doClientStuff);
 
-	public static final Logger LOGGER = LogManager.getLogger(Constants.MODID);
-	public static final OS3API API = new OS3APIImpl();
-	static final EventHandlers eventHandlers = new EventHandlers();
-	public static final FeatureRegistry FEATURES = new FeatureRegistry();
+        // Register ourselves for server and other game events we are interested in
+        MinecraftForge.EVENT_BUS.register(this);
+    }
 
-	static final FlatBedrock flatBedrock = new FlatBedrock();
-	
-	@EventHandler
-	public void onFingerprintViolation(final FMLFingerprintViolationEvent event) {
-		LOGGER.warn("Invalid fingerprint detected!");
-	}
+    private void setup(final FMLCommonSetupEvent event) {
+    	final Type annotationType = Type.getType(os3plugin.class);
+    	ModList.get().getAllScanData().stream()
+    		.flatMap( scanData -> scanData.getAnnotations()
+    					.stream()
+    					.filter(a -> annotationType.equals(a.getAnnotationType())))
+    		.map(ModFileScanData.AnnotationData::getClassType)
+    		.map(TypeUtils::getClassFromType)
+    		.filter(Helpers::objectNotNull)
+    		.forEach(PluginLoader::Load);
+    	// load configs
+    	OS3API.loadPresets();
+    	OS3API.loadReplacements();
+    	OS3API.loadFeatures();
+    	OS3API.loadIntegrationWhitelist();
+    	OS3API.loadSpawns();
+    	
+    	// register world gen
+    }
 
-	@EventHandler
-	public void preInit(final FMLPreInitializationEvent ev) {
-		Config.loadConfig();
+    private void doClientStuff(final FMLClientSetupEvent event) {
+        // do something that can only be done on the client
+        LOGGER.info("Got game settings {}", event.getMinecraftSupplier().get().gameSettings);
+    }
 
-		PluginLoader.INSTANCE.load(ev);
+    private void enqueueIMC(final InterModEnqueueEvent event) {
+        // some example code to dispatch IMC to another mod
+        InterModComms.sendTo("orespawn", "helloworld", () -> {
+            LOGGER.info("Hello world from the MDK"); return "Hello world";}
+        );
+    }
 
-		if (Config.getBoolean(Constants.FLAT_BEDROCK)) {
-			GameRegistry.registerWorldGenerator(flatBedrock, 100);
-		}
-		
-		if (Config.getBoolean(Constants.RETROGEN_KEY)
-				|| Config.getBoolean(Constants.REPLACE_VANILLA_OREGEN)
-				|| Config.getBoolean(Constants.RETRO_BEDROCK)) {
-			MinecraftForge.EVENT_BUS.register(eventHandlers);
-			MinecraftForge.ORE_GEN_BUS.register(eventHandlers);
-		}
-	}
+    private void processIMC(final InterModProcessEvent event) {
+        // some example code to receive and process InterModComms from other mods
+        LOGGER.info("Got IMC {}", event.getIMCStream().
+                map(m -> m.getMessageSupplier().get()).
+                collect(Collectors.toList()));
+    }
 
-	@EventHandler
-	public void init(final FMLInitializationEvent ev) {
-		PluginLoader.INSTANCE.register();
+    // You can use SubscribeEvent and let the Event Bus discover methods to call
+    @SubscribeEvent
+    public void onServerStarting(final FMLServerStartingEvent event) {
+        // do something when the server starts
+        LOGGER.info("HELLO from server starting");
+    }
 
-		API.loadConfigFiles();
-	}
-
-	@EventHandler
-	public void postInit(final FMLPostInitializationEvent ev) {
-		Config.saveConfig();
-		API.getAllSpawns().entrySet().stream()
-		           .forEach(ent -> {
-		        	   GameRegistry.registerWorldGenerator(new OreSpawnFeatureGenerator(ent.getValue(), ent.getKey()), 100);
-		           });
-	}
-
-	@EventHandler
-	public void onServerStarting(final FMLServerStartingEvent ev) {
-		ev.registerServerCommand(new ClearChunkCommand());
-		ev.registerServerCommand(new DumpBiomesCommand());
-		ev.registerServerCommand(new AddOreCommand());
-		ev.registerServerCommand(new WriteConfigsCommand());
-	}
+    // You can use EventBusSubscriber to automatically subscribe events on the contained class (this is subscribing
+    // to the MOD Event bus for receiving Registry Events)
+    @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
+    public static class RegistryEvents {
+        @SubscribeEvent
+        public static void onBlocksRegistry(final RegistryEvent.Register<Block> blockRegistryEvent) {
+            // register a new block here
+            LOGGER.info("HELLO from Register Block");
+        }
+    }
 }

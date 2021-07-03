@@ -1,9 +1,5 @@
 package com.mcmoddev.orespawn.registries;
 
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 
@@ -12,7 +8,6 @@ import net.minecraftforge.registries.IForgeRegistryModifiable;
 import net.minecraftforge.registries.RegistryBuilder;
 
 public class PresetsRegistry {
-
 	private static final IForgeRegistryModifiable<IPresetEntry> presetsRegistry = (IForgeRegistryModifiable<IPresetEntry>) new RegistryBuilder<IPresetEntry>()
 			.setName(new ResourceLocation("orespawn", "presets_registry"))
 			.allowModification()
@@ -23,12 +18,6 @@ public class PresetsRegistry {
 	public static final PresetsRegistry INSTANCE = new PresetsRegistry();
 	
 	PresetsRegistry() {
-	}
-	
-	public Map<ResourceLocation, IPresetEntry> getPresets() {
-		return ImmutableMap.copyOf(presetsRegistry.getEntries().stream()
-				.map( entry -> Map.entry(entry.getValue().getRegistryName(), entry.getValue()) )
-				.collect(Collectors.toSet()));
 	}
 	
 	public JsonElement getPreset(String name) {

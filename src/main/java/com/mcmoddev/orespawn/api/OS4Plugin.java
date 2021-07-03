@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 
 @Retention(RUNTIME)
 @Target(TYPE)
-public @interface os3plugin {
+public @interface OS4Plugin {
 
 	// the Mod this is for - will be used for
 	// generating the name of the json the config

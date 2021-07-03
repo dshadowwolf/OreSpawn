@@ -20,8 +20,8 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 
 import com.mcmoddev.orespawn.OreSpawn;
-import com.mcmoddev.orespawn.api.OS3API;
-import com.mcmoddev.orespawn.api.os3plugin;
+import com.mcmoddev.orespawn.api.OS4API;
+import com.mcmoddev.orespawn.api.OS4Plugin;
 import com.mcmoddev.orespawn.data.Config;
 import com.mcmoddev.orespawn.data.Constants;
 
@@ -29,18 +29,18 @@ public enum PluginLoader {
 	INSTANCE;
 	
 	public static void Load(Class<?> clazz) {
-		if( clazz.isAnnotationPresent(os3plugin.class) ) {
+		if( clazz.isAnnotationPresent(OS4Plugin.class) ) {
 			loadInternal(clazz);
 		}
 	}
 	
 	private static void loadInternal(Class<?> cls) {
-		final os3plugin annot = cls.getAnnotation(os3plugin.class);
-		OS3API.addMod(annot.modid(), annot.resourcePath());
+		final OS4Plugin annot = cls.getAnnotation(OS4Plugin.class);
+		OS4API.addMod(annot.modid(), annot.resourcePath());
 	}
 
 	public static void findResources() {
-		OS3API.getMods().entrySet()
+		OS4API.getMods().entrySet()
 			.forEach( ent -> {
 				final String base = String.format(Locale.ENGLISH, "assets/%s/%s", ent.getKey(), ent.getValue());
 				final URL resURL = INSTANCE.getClass().getClassLoader().getResource(base);

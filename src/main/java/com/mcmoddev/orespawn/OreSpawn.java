@@ -1,32 +1,32 @@
 package com.mcmoddev.orespawn;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.Blocks;
+import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.RegistryEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.InterModComms;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
 import net.minecraftforge.fml.event.lifecycle.InterModProcessEvent;
-import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.forgespi.language.ModFileScanData;
+import net.minecraftforge.fml.loading.moddiscovery.ModFile;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.objectweb.asm.Type;
 
-import com.mcmoddev.orespawn.api.OS3API;
-import com.mcmoddev.orespawn.api.os3plugin;
-import com.mcmoddev.orespawn.api.plugin.PluginLoader;
-import com.mcmoddev.orespawn.utils.Helpers;
-import com.mcmoddev.orespawn.utils.TypeUtils;
+import com.mcmoddev.orespawn.data.Constants;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.LinkedList;
 import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Locale;
+
+import com.google.common.base.Joiner;
 
 @Mod("orespawn")
 public class OreSpawn {
@@ -47,60 +47,93 @@ public class OreSpawn {
         MinecraftForge.EVENT_BUS.register(this);
     }
 
+    private List<ResourceLocation> iterateFiles(ModFile modFile) {
+        try {
+            Path root = modFile.getLocator().findPath(modFile, "assets", "orespawn4-data").toAbsolutePath();
+            
+            return Files.walk(root).
+                    map(path -> root.relativize(path.toAbsolutePath())).
+                    filter(path -> path.getNameCount() <= 64). // Make sure the depth is within bounds
+                    filter(path -> path.toString().endsWith(".json")).
+                    map(path -> Joiner.on('/').join(path)).
+                    map(path -> path.toString()).
+                    map(path -> path.substring(0, path.length() - 5)).
+                    map(path -> new ResourceLocation(modFile.getModInfos().get(0).getModId(), path)).
+                    collect(Collectors.toList());
+        } catch (IOException e) {
+            return Collections.emptyList();
+        }    	    	
+    }
+    
+    List<ResourceLocation> iterateDiskFiles() {
+        try {
+    	Path diskPath = Paths.get(Constants.FileBits.CONFIG_DIR, Constants.FileBits.OS4).toAbsolutePath();
+    	return Files.walk(diskPath)
+    	    	.map(path -> diskPath.relativize(path.toAbsolutePath()))
+                .filter(path -> path.getNameCount() <= 64)
+                .filter(path -> path.toString().endsWith(".json"))
+                .map(path -> Joiner.on('/').join(path))
+                .map(path -> path.toString())
+                .map(path -> path.toLowerCase(Locale.US))
+                .map(path -> path.substring(0, path.length() - 5))
+    	    	.map(path -> new ResourceLocation("orespawn-disk", path))
+    	    	.collect(Collectors.toList());
+    } catch (IOException e) {
+        return Collections.emptyList();
+    }    	    	
+    }
     private void setup(final FMLCommonSetupEvent event) {
-    	final Type annotationType = Type.getType(os3plugin.class);
-    	ModList.get().getAllScanData().stream()
-    		.flatMap( scanData -> scanData.getAnnotations()
-    					.stream()
-    					.filter(a -> annotationType.equals(a.getAnnotationType())))
-    		.map(ModFileScanData.AnnotationData::getClassType)
-    		.map(TypeUtils::getClassFromType)
-    		.filter(Helpers::objectNotNull)
-    		.forEach(PluginLoader::Load);
-    	// load configs
-    	OS3API.loadPresets();
-    	OS3API.loadReplacements();
-    	OS3API.loadFeatures();
-    	OS3API.loadIntegrationWhitelist();
-    	OS3API.loadSpawns();
+    	List<ResourceLocation> foundFiles = new LinkedList<>();
+    	ModList.get().getModFiles().stream()
+    	.map(mfi -> iterateFiles(mfi.getFile()))
+    	.forEach(lrl -> lrl.stream().forEach(rl -> foundFiles.add(rl)));
+
+    	iterateDiskFiles().stream().forEach(rl -> foundFiles.add(rl));
     	
+    	List<ResourceLocation> featuresFiles = foundFiles.stream()
+    			.filter(rl -> rl.getPath().startsWith("features/"))
+    			.collect(Collectors.toList());
+    	List<ResourceLocation> replacementsFiles = foundFiles.stream()
+    			.filter(rl -> rl.getPath().startsWith("replacements/"))
+    			.collect(Collectors.toList());
+    	List<ResourceLocation> presetsFiles = foundFiles.stream()
+    			.filter(rl -> rl.getPath().startsWith("presets/"))
+    			.collect(Collectors.toList());
+    	List<ResourceLocation> spawnConfigs = foundFiles.stream()
+    			.filter(rl -> !featuresFiles.contains(rl))
+    			.filter(rl -> !replacementsFiles.contains(rl))
+    			.filter(rl -> !presetsFiles.contains(rl))
+    			.collect(Collectors.toList());
+
+    	LOGGER.info("Found {} features files, {} replacements files, {} presets files and {} spawn configuration files",
+    			featuresFiles.size(), replacementsFiles.size(), presetsFiles.size(), spawnConfigs.size());
+    	
+    	LOGGER.info("> Features Files:");
+    	featuresFiles.forEach(rl -> LOGGER.info(">> {}", rl.toString()));
+    	LOGGER.info("> Replacements Files:");
+    	replacementsFiles.forEach(rl -> LOGGER.info(">> {}", rl.toString()));
+    	LOGGER.info("> Presets Files:");
+    	presetsFiles.forEach(rl -> LOGGER.info(">> {}", rl.toString()));
+    	LOGGER.info("> Spawn Configs:");
+    	spawnConfigs.forEach(rl -> LOGGER.info(">> {}", rl.toString()));
+    	
+    	// load configs
+    	/*
+    	OS4API.loadPresets();
+    	OS4API.loadReplacements();
+    	OS4API.loadFeatures();
+    	OS4API.loadIntegrationWhitelist();
+    	OS4API.loadSpawns();
+    	*/
     	// register world gen
     }
 
     private void doClientStuff(final FMLClientSetupEvent event) {
-        // do something that can only be done on the client
-        LOGGER.info("Got game settings {}", event.getMinecraftSupplier().get().gameSettings);
     }
 
     private void enqueueIMC(final InterModEnqueueEvent event) {
-        // some example code to dispatch IMC to another mod
-        InterModComms.sendTo("orespawn", "helloworld", () -> {
-            LOGGER.info("Hello world from the MDK"); return "Hello world";}
-        );
     }
 
     private void processIMC(final InterModProcessEvent event) {
-        // some example code to receive and process InterModComms from other mods
-        LOGGER.info("Got IMC {}", event.getIMCStream().
-                map(m -> m.getMessageSupplier().get()).
-                collect(Collectors.toList()));
-    }
-
-    // You can use SubscribeEvent and let the Event Bus discover methods to call
-    @SubscribeEvent
-    public void onServerStarting(final FMLServerStartingEvent event) {
-        // do something when the server starts
-        LOGGER.info("HELLO from server starting");
-    }
-
-    // You can use EventBusSubscriber to automatically subscribe events on the contained class (this is subscribing
-    // to the MOD Event bus for receiving Registry Events)
-    @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
-    public static class RegistryEvents {
-        @SubscribeEvent
-        public static void onBlocksRegistry(final RegistryEvent.Register<Block> blockRegistryEvent) {
-            // register a new block here
-            LOGGER.info("HELLO from Register Block");
-        }
     }
 }

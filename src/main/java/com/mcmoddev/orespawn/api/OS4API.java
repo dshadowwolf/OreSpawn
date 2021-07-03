@@ -6,6 +6,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -21,13 +22,15 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import com.mcmoddev.orespawn.OreSpawn;
+import com.mcmoddev.orespawn.builders.SpawnBuilder;
 import com.mcmoddev.orespawn.data.Constants;
 import com.mcmoddev.orespawn.data.OS4BlockData;
 import com.mcmoddev.orespawn.registries.FeaturesRegistry;
 import com.mcmoddev.orespawn.registries.PresetsRegistry;
 import com.mcmoddev.orespawn.registries.ReplacementsRegistry;
+import com.mcmoddev.orespawn.registries.SpawnStore;
 
-public class OS3API {
+public class OS4API {
 	private static Map<String,String> modRefs = new HashMap<>(1024);
 	private static List<String> allowedConfigs = new LinkedList<>();
 	
@@ -38,7 +41,10 @@ public class OS3API {
 	public static Map<String, String> getMods() {
 		return Collections.unmodifiableMap(modRefs);
 	}
-	
+
+	/*
+	 * Walk the config directory, load all the various `presets-XXX.json` files
+	 */
 	public static void loadPresets() {
 		PathMatcher matcher = FileSystems.getDefault()
 				.getPathMatcher("glob:**/presets-*.json");
@@ -77,6 +83,9 @@ public class OS3API {
 		}
 	}
 	
+	/*
+	 * Walk the config directory, load all the various `replacements-XXX.json` files
+	 */
 	public static void loadReplacements() {
 		PathMatcher matcher = FileSystems.getDefault()
 				.getPathMatcher("glob:**/replacements-*.json");
@@ -100,9 +109,6 @@ public class OS3API {
 						elements.entrySet().stream()
 							.forEach( repl -> {
 								String replName = repl.getKey();
-								if (repl.getValue().isJsonPrimitive()) {
-									// TODO: Preset Shit
-								} else {
 									JsonArray replValues = repl.getValue().getAsJsonArray();
 									List<OS4BlockData> blocks = new LinkedList<OS4BlockData>();
 									for( JsonElement el : replValues) {
@@ -112,7 +118,6 @@ public class OS3API {
 										blocks.add(new OS4BlockData(blName, state));
 									}
 									ReplacementsRegistry.INSTANCE.addReplacement(replName, blocks);
-								}
 							});
 					});
 		} catch (final IOException e) {
@@ -120,6 +125,9 @@ public class OS3API {
 		}
 	}
 	
+	/*
+	 * Walk the config directory, load all the various `features-XXX.json` files
+	 */
 	public static void loadFeatures() {
 		PathMatcher matcher = FileSystems.getDefault()
 				.getPathMatcher("glob:**/features-*.json");
@@ -152,6 +160,11 @@ public class OS3API {
 		}
 	}
 	
+	/*
+	 * Load the `Active Configs` file
+	 * This one needs a bit more thought, right now its just a list of filenames...
+	 * It might be better to have some structure so mods themselves can be listed
+	 */
 	public static void loadIntegrationWhitelist() {
 		Path p = Constants.SYSCONF.resolve(Constants.FileBits.ALLOWED_MODS);
 		final JsonParser parser = new JsonParser();
@@ -167,11 +180,44 @@ public class OS3API {
 		parser.parse(rawJson).getAsJsonArray().forEach( item -> allowedConfigs.add(item.getAsString()));
 	}
 	
-	public static void loadSpawns() {
-		// find all JSON files that are not in `sysconf`
-		// filter for only active-flagged files
-		// load them, interpolating any presets present
-		// stuff them into a registry
-		// return
-	}
-}
+    public static void loadSpawns() {
+        final JsonParser parser = new JsonParser();
+        
+        Arrays.asList(Constants.JSONPATH.toFile().listFiles())
+        .stream()
+        // find all JSON files
+        .filter( f -> f.toPath().endsWith(".json"))
+        // that are not in SYSCONF
+        .filter( f -> !f.getAbsolutePath().contains(Constants.FileBits.SYSCONF))
+        // and are listed in allowedConfigs
+        .filter( f -> allowedConfigs.contains(f.getName().substring(0, f.getName().length() - 5)))
+        .forEach( inFile -> {
+            // try to read the file
+            String rawData;
+            try {
+                rawData = FileUtils.readFileToString(inFile, Charset.defaultCharset());
+            } catch (final IOException e) {
+                OreSpawn.LOGGER.error(String.format("Cannot load %s:\n%s", inFile.getName(), e.getMessage()));
+                return;
+            }
+            
+            // parse the file
+            JsonObject rawJson = parser.parse(rawData).getAsJsonObject();
+            
+            String fileVersion = rawJson.get(Constants.ConfigNames.VERSION).getAsString();
+            JsonObject spawnWrapper = rawJson.get(Constants.ConfigNames.SPAWNS).getAsJsonObject();
+            
+            OreSpawn.LOGGER.info("Loading JSON version {} from {}", fileVersion, inFile.getName());
+            
+            // load the spawns
+            spawnWrapper.entrySet().stream()
+            .forEach( entry -> {
+                String spawnName = entry.getKey();
+                JsonObject spawnData = entry.getValue().getAsJsonObject();
+                SpawnBuilder theBuilder = new SpawnBuilder(spawnName);
+                spawnData.entrySet().stream().forEach(spawn -> theBuilder.addItem(spawn.getKey(), spawn.getValue()));
+                SpawnStore.add(spawnName, theBuilder.build());
+            });
+        });
+    }
+ }

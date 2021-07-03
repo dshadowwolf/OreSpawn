@@ -1,5 +1,7 @@
 package com.mcmoddev.orespawn.data;
 
+import com.google.gson.JsonElement;
+
 public class OS4BlockData {
 	private final String blockIdentifier;
 	private final String blockState;
@@ -20,5 +22,10 @@ public class OS4BlockData {
 	
 	public final String getBlockState() {
 		return this.blockState;
+	}
+
+	public static Object parseJsonData(JsonElement itemData) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

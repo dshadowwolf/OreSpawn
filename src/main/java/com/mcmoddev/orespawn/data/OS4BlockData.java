@@ -24,7 +24,7 @@ public class OS4BlockData {
 		return this.blockState;
 	}
 
-	public static Object parseJsonData(JsonElement itemData) {
+	public static OS4BlockData parseJsonData(JsonElement itemData) {
 		// TODO Auto-generated method stub
 		return null;
 	}

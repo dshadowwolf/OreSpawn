@@ -1,10 +1,10 @@
 package com.mcmoddev.orespawn.builders;
 
-import com.google.gson.JsonObject;
+import com.google.gson.JsonArray;
 
 public class DimensionMatcher {
 
-	public DimensionMatcher(JsonObject asJsonObject) {
+	public DimensionMatcher(JsonArray jsonArray) {
 		// TODO Auto-generated constructor stub
 	}
 

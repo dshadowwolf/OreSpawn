@@ -10,7 +10,7 @@ public class Constants {
 	public static final Path JSONPATH = Paths.get(FileBits.CONFIG_DIR, FileBits.OS4);
 	public static class ConfigNames {
 
-		public static final String REPLACEMENT = "replacements";
+		public static final String REPLACEMENT = "replaces";
 		public static final String FEATURE = "feature";
 		public static final String DIMENSIONS = "dimensions";
 		public static final String BIOMES = "biomes";
@@ -18,7 +18,8 @@ public class Constants {
 		public static final String PARAMETERS = "parameters";
 		public static final String VERSION = "version";
 		public static final String SPAWNS = "spawns";
-		
+		public static final String ENABLED = "enabled";
+		public static final String RETROGEN = "retrogen";
 	}
 	public static class FileBits {
 		public static final String CONFIG_DIR = "config";
@@ -26,5 +27,10 @@ public class Constants {
 		public static final String SYSCONF = "sysconf";
 		public static final String PRESETS = "presets.json";
 		public static final String ALLOWED_MODS = "active_mods.json";
+		public static final String DISK = "__DISK__";
+		public static final String RESOURCE = "__RESOURCE__";
+	}
+	public static enum FileTypes {
+		FEATURES, SPAWN, PRESETS, REPLACEMENTS;
 	}
 }

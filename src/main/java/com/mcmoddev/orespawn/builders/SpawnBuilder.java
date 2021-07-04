@@ -5,6 +5,7 @@ import com.mcmoddev.orespawn.registries.PresetsRegistry;
 
 import java.util.List;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mcmoddev.orespawn.OreSpawn;
@@ -42,16 +43,25 @@ public class SpawnBuilder {
 			this.setFeature(actualData);
 			break;
 		case Constants.ConfigNames.DIMENSIONS:
-			this.setDimensions(new DimensionMatcher(actualData.getAsJsonObject()));
+			this.setDimensions(new DimensionMatcher(actualData.getAsJsonArray()));
 			break;
 		case Constants.ConfigNames.BIOMES:
 			this.setBiomes(new BiomeMatcher(actualData.getAsJsonObject()));
 			break;
 		case Constants.ConfigNames.BLOCKS:
-			this.setBlocks(OS4BlockData.parseJsonData(actualData));
+			JsonArray blocks = actualData.getAsJsonArray();
+			blocks.forEach(block -> {
+				this.addBlock(OS4BlockData.parseJsonData(block));
+			});
 			break;
 		case Constants.ConfigNames.PARAMETERS:
 			this.parameters = actualData.getAsJsonObject();
+			break;
+		case Constants.ConfigNames.RETROGEN:
+			this.doRetro = actualData.getAsBoolean();
+			break;
+		case Constants.ConfigNames.ENABLED:
+			this.active = actualData.getAsBoolean();
 			break;
 		default:
 			OreSpawn.LOGGER.error("Unknown config item {} - skipping", itemName);
@@ -60,11 +70,17 @@ public class SpawnBuilder {
 		return this;
 	}
 	
-	private void setBlocks(Object parseJsonData) {
+	private void addBlock(OS4BlockData block) {
 		// TODO Auto-generated method stub
 		
 	}
 
+	/*
+	 * private void setBlocks(Object parseJsonData) { // TODO Auto-generated method
+	 * stub
+	 * 
+	 * }
+	 */
 	private void setBiomes(BiomeMatcher biomeMatcher) {
 		// TODO Auto-generated method stub
 		

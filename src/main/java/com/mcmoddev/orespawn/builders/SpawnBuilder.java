@@ -1,7 +1,9 @@
 package com.mcmoddev.orespawn.builders;
 
+import com.mcmoddev.orespawn.registries.FeaturesRegistry;
 import com.mcmoddev.orespawn.registries.IReplacementEntry;
 import com.mcmoddev.orespawn.registries.PresetsRegistry;
+import com.mcmoddev.orespawn.registries.ReplacementsRegistry;
 
 import java.util.List;
 
@@ -9,6 +11,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mcmoddev.orespawn.OreSpawn;
+import com.mcmoddev.orespawn.api.OS4Feature;
 import com.mcmoddev.orespawn.data.OS4BlockData;
 import com.mcmoddev.orespawn.data.Constants;
 
@@ -21,6 +24,7 @@ public class SpawnBuilder {
 	private BiomeMatcher biomes;
 	private List<OS4BlockData> blocks;
 	private JsonObject parameters;
+	private OS4Feature feature;
 	
 	public SpawnBuilder(final String spawnName) {
 		myName = spawnName;
@@ -37,10 +41,10 @@ public class SpawnBuilder {
 		
 		switch(itemName) {
 		case Constants.ConfigNames.REPLACEMENT:
-			this.setReplacement(actualData);
+			this.setReplacement(actualData.getAsString());
 			break;
 		case Constants.ConfigNames.FEATURE:
-			this.setFeature(actualData);
+			this.setFeature(actualData.getAsString());
 			break;
 		case Constants.ConfigNames.DIMENSIONS:
 			this.setDimensions(new DimensionMatcher(actualData.getAsJsonArray()));
@@ -71,25 +75,23 @@ public class SpawnBuilder {
 	}
 	
 	private void addBlock(OS4BlockData block) {
-		// TODO Auto-generated method stub
+		blocks.add(block);
 	}
 
 	private void setBiomes(BiomeMatcher biomeMatcher) {
-		// TODO Auto-generated method stub
-		
+		biomes = biomeMatcher;
 	}
 
 	private void setDimensions(DimensionMatcher dimensionMatcher) {
-		// TODO Auto-generated method stub
-		
+		dimensions = dimensionMatcher;
 	}
 
-	private void setReplacement(final JsonElement data) {
-		
+	private void setReplacement(final String replacementName) {
+		replacements = ReplacementsRegistry.INSTANCE.get(replacementName);
 	}
 
-	private void setFeature(final JsonElement data) {
-		
+	private void setFeature(final String featureName) {
+		feature = FeaturesRegistry.INSTANCE.getFeature(featureName);
 	}
 
 	public JsonObject getParameters() {
@@ -100,6 +102,10 @@ public class SpawnBuilder {
 		return blocks;
 	}
 
+	public OS4Feature getFeature() {
+		return feature;
+	}
+	
 	public String getMyName() {
 		return myName;
 	}

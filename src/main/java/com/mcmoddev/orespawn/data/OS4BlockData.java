@@ -1,14 +1,25 @@
 package com.mcmoddev.orespawn.data;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 public class OS4BlockData {
 	private final String blockIdentifier;
 	private final String blockState;
+	private final int chance;
 	
-	public OS4BlockData(final String blockName, final String state) {
+	public OS4BlockData(final String blockName, final String state, final int chance) {
 		this.blockIdentifier = blockName;
 		this.blockState = state==null?"":state;
+		this.chance = chance;
+	}
+	
+	public OS4BlockData(final String blockName, final String state) {
+		this(blockName, state, 100);
+	}
+	
+	public final int getChance() {
+		return this.chance;
 	}
 	
 	public final String getBlock() {
@@ -25,7 +36,12 @@ public class OS4BlockData {
 	}
 
 	public static OS4BlockData parseJsonData(JsonElement itemData) {
-		// TODO Auto-generated method stub
-		return null;
+		JsonObject actual = itemData.getAsJsonObject();
+		
+		int chance = actual.has("chance")?actual.get("chance").getAsInt():100;
+		String state = actual.has("state")?actual.get("state").getAsString():null;
+		String name = actual.has("name")?actual.get("name").getAsString():"i-am:a-missing-value";
+		
+		return new OS4BlockData(name, state, chance);
 	}
 }

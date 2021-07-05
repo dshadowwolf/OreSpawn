@@ -41,6 +41,12 @@ public class ReplacementsRegistry {
 		replacementsRegistry.register(entry);
 	}
 	
+	public IReplacementEntry get(final String name) {
+		ResourceLocation loc = name.contains(":")?new ResourceLocation(name):new ResourceLocation("orespawn", name);
+		if (replacementsRegistry.containsKey(loc)) return replacementsRegistry.getValue(loc);
+		else return replacementsRegistry.getValue(new ResourceLocation("orespawn", "default"));
+	}
+	
 	private class DefaultReplacementEntry implements IReplacementEntry {
 		private ResourceLocation name;
 		private final List<OS4BlockData> data;

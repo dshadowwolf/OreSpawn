@@ -72,15 +72,8 @@ public class SpawnBuilder {
 	
 	private void addBlock(OS4BlockData block) {
 		// TODO Auto-generated method stub
-		
 	}
 
-	/*
-	 * private void setBlocks(Object parseJsonData) { // TODO Auto-generated method
-	 * stub
-	 * 
-	 * }
-	 */
 	private void setBiomes(BiomeMatcher biomeMatcher) {
 		// TODO Auto-generated method stub
 		

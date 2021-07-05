@@ -55,43 +55,34 @@ public class ResourceLoader {
 			OS4API.loadIntegrationWhitelist();
 		}
 		
-		// TODO: Add Whitelist/Blacklist filtering
-		featuresFiles.stream().forEach(rl -> {			
-			if (rl.getNamespace().matches("orespawn-disk")) {
-				loadFromDisk(rl, Constants.FileTypes.FEATURES);
-			} else {
-				loadFromResource(rl, Constants.FileTypes.FEATURES);
-			}
-		});
+		featuresFiles.stream()
+		.filter(rl -> (OS4API.isAllowed(rl.getNamespace()) && OS4API.isAllowed(rl.getPath()+".json")))
+		.forEach(rl -> loadResourceLocation(rl, Constants.FileTypes.FEATURES));
 		
-		replacementsFiles.stream().forEach(rl -> {			
-			if (rl.getNamespace().matches("orespawn-disk")) {
-				loadFromDisk(rl, Constants.FileTypes.REPLACEMENTS);
-			} else {
-				loadFromResource(rl, Constants.FileTypes.REPLACEMENTS);
-			}
-		});
+		replacementsFiles.stream()
+		.filter(rl -> (OS4API.isAllowed(rl.getNamespace()) && OS4API.isAllowed(rl.getPath()+".json")))
+		.forEach(rl -> loadResourceLocation(rl, Constants.FileTypes.REPLACEMENTS));
 		
-		presetsFiles.stream().forEach(rl -> {			
-			if (rl.getNamespace().matches("orespawn-disk")) {
-				loadFromDisk(rl, Constants.FileTypes.PRESETS);
-			} else {
-				loadFromResource(rl, Constants.FileTypes.PRESETS);
-			}
-		});
+		presetsFiles.stream()
+		.filter(rl -> (OS4API.isAllowed(rl.getNamespace()) && OS4API.isAllowed(rl.getPath()+".json")))
+		.forEach(rl -> loadResourceLocation(rl, Constants.FileTypes.PRESETS));
 		
-		spawnConfigs.stream().forEach(rl -> {			
-			if (rl.getNamespace().matches("orespawn-disk")) {
-				loadFromDisk(rl, Constants.FileTypes.SPAWN);
-			} else {
-				loadFromResource(rl, Constants.FileTypes.SPAWN);
-			}
-		});
+		spawnConfigs.stream()
+		.filter(rl -> (OS4API.isAllowed(rl.getNamespace()) && OS4API.isAllowed(rl.getPath()+".json")))
+		.forEach(rl -> loadResourceLocation(rl, Constants.FileTypes.SPAWN));
+	}
+	
+	private void loadResourceLocation(final ResourceLocation rl, final FileTypes type) {
+		if (rl.getNamespace().matches("orespawn-disk")) {
+			loadFromDisk(rl, type);
+		} else {
+			loadFromResource(rl, type);
+		}		
 	}
 	
 	private List<ResourceLocation> iterateFiles(ModFile modFile) {
 		try {
-			Path root = modFile.getLocator().findPath(modFile, "assets", "orespawn4-data").toAbsolutePath();
+			Path root = modFile.getLocator().findPath(modFile, Constants.FileBits.RESOURCE_PATH).toAbsolutePath();
 
 			return Files.walk(root).map(path -> root.relativize(path.toAbsolutePath()))
 					.filter(path -> path.getNameCount() <= 64). // Make sure the depth is within bounds

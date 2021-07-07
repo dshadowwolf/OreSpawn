@@ -8,4 +8,5 @@ public interface IFeatureEntry extends IForgeRegistryEntry<IFeatureEntry> {
 	Class<? extends OS4Feature> getFeature();
 	String getClassName();
 	void setFeatureName(String name);
+	void resolve();
 }

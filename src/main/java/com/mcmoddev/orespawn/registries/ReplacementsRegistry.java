@@ -1,8 +1,9 @@
 package com.mcmoddev.orespawn.registries;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.common.extensions.IForgeBlockState;
+import net.minecraft.util.registry.DynamicRegistries;
 import net.minecraftforge.registries.IForgeRegistryModifiable;
 import net.minecraftforge.registries.RegistryBuilder;
 
@@ -12,6 +13,8 @@ import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableList;
 import com.mcmoddev.orespawn.data.OS4BlockData;
+import com.mcmoddev.orespawn.utils.Helpers;
+import com.mcmoddev.orespawn.utils.OS4BlockStateMatcher;
 
 public class ReplacementsRegistry {
 	private static final IForgeRegistryModifiable<IReplacementEntry> replacementsRegistry = (IForgeRegistryModifiable<IReplacementEntry>) new RegistryBuilder<IReplacementEntry>()
@@ -50,7 +53,7 @@ public class ReplacementsRegistry {
 	private class DefaultReplacementEntry implements IReplacementEntry {
 		private ResourceLocation name;
 		private final List<OS4BlockData> data;
-		private List<IForgeBlockState> blockStates;
+		private List<BlockState> blockStates;
 
 		DefaultReplacementEntry(ResourceLocation loc, List<OS4BlockData> blocks) {
 			this.name = loc;
@@ -78,7 +81,7 @@ public class ReplacementsRegistry {
 		}
 
 		@Override
-		public List<IForgeBlockState> getReplacementState() {
+		public List<BlockState> getReplacementState() {
 			return ImmutableList.copyOf(this.blockStates);
 		}
 
@@ -95,9 +98,22 @@ public class ReplacementsRegistry {
 		
 		@Override
 		public void resolveBlocks() {
-			// TODO: Complete - should iterate this.data and use the state deserialize routines
-			// dereferencing from the blocks list
+			data.stream()
+			.map(blockData -> Helpers.deserializeState(String.format("%s[%s]", 
+					blockData.getBlockName(), blockData.getBlockState())))
+			.forEach(blockStates::add);
 		}
-		
+
+		@Override
+		public OS4BlockStateMatcher getBlockMatcher() {
+			if (this.blockStates.isEmpty()) return null;
+			
+			return new OS4BlockStateMatcher(this.blockStates);
+		}
+	}
+
+	public void doDataResolution(DynamicRegistries dynamicRegistries) {
+		replacementsRegistry.getValues().stream()
+		.forEach(ent -> ent.resolveBlocks());
 	}
 }

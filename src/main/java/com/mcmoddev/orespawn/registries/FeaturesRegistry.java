@@ -54,16 +54,9 @@ public class FeaturesRegistry {
 		private String featureClassPath;
 		private Class<? extends OS4Feature> featureClass;
 		
-		@SuppressWarnings("unchecked")
 		public DefaultFeatureEntry(final ResourceLocation location, final String classPath) {
 			this.resLoc = location;
 			this.featureClassPath = classPath;
-			try {
-				this.featureClass = (Class<? extends OS4Feature>)Class.forName(classPath);
-			} catch(ClassNotFoundException e) {
-				OreSpawn.LOGGER.error(e.getMessage());
-				this.featureClass = null;
-			}
 		}
 		
 		public Class<? extends OS4Feature> getFeature() {
@@ -97,5 +90,19 @@ public class FeaturesRegistry {
 			return this;
 		}
 
+		@Override
+		@SuppressWarnings("unchecked")
+		public void resolve() {
+			try {
+				this.featureClass = (Class<? extends OS4Feature>)Class.forName(this.featureClassPath);
+			} catch(ClassNotFoundException e) {
+				OreSpawn.LOGGER.error(e.getMessage());
+				this.featureClass = null;
+			}
+		}
+	}
+
+	public void doDataResolution() {
+		featuresRegistry.getValues().stream().forEach(ent -> ent.resolve());
 	}
 }

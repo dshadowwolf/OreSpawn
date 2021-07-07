@@ -28,6 +28,8 @@ import com.mcmoddev.orespawn.registries.PresetsRegistry;
 import com.mcmoddev.orespawn.registries.ReplacementsRegistry;
 import com.mcmoddev.orespawn.registries.SpawnStore;
 
+import net.minecraft.util.registry.DynamicRegistries;
+
 public class OS4API {
 	private static Map<String,String> modRefs = new HashMap<>(1024);
 	private static ConfigBlacklist configBlacklist = new ConfigBlacklist();
@@ -138,5 +140,11 @@ public class OS4API {
 	
 	public static boolean isAllowed(final String checkName) {
 		return configBlacklist.isAllowed(checkName);
+	}
+
+	public static void resolveData(DynamicRegistries dynamicRegistries) {
+		FeaturesRegistry.INSTANCE.doDataResolution();
+		ReplacementsRegistry.INSTANCE.doDataResolution(dynamicRegistries);
+		SpawnStore.doResolveData(dynamicRegistries);
 	}
 }

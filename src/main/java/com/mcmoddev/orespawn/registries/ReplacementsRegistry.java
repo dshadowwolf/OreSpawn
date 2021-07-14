@@ -10,6 +10,7 @@ import net.minecraftforge.registries.RegistryBuilder;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableList;
@@ -64,7 +65,7 @@ public class ReplacementsRegistry {
 	private class DefaultReplacementEntry implements IReplacementEntry {
 		private ResourceLocation name;
 		private final List<OS4BlockData> data;
-		private List<BlockState> blockStates;
+		private final List<BlockState> blockStates;
 
 		DefaultReplacementEntry(ResourceLocation loc, List<OS4BlockData> blocks) {
 			this.name = loc;
@@ -112,10 +113,10 @@ public class ReplacementsRegistry {
 		@Override
 		public void resolveBlocks() {
 			data.stream()
-			.filter( bd -> bd != null )
+			.filter(Objects::nonNull)
 			.map(blockData -> Helpers.deserializeState(String.format("%s[%s]",
 					blockData.getBlockName(), blockData.getBlockState())))
-			.filter(bs -> bs != null)
+			.filter(Objects::nonNull)
 			.forEach(blockStates::add);
 		}
 
@@ -127,8 +128,8 @@ public class ReplacementsRegistry {
 		}
 	}
 
-	public void doDataResolution(DynamicRegistries dynamicRegistries) {
+	public void doDataResolution(@SuppressWarnings("unused") DynamicRegistries dynamicRegistries) {
 		replacementsRegistry.getValues()
-		.forEach(ent -> ent.resolveBlocks());
+		.forEach(IReplacementEntry::resolveBlocks);
 	}
 }

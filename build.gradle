@@ -512,7 +512,8 @@ repositories {
 }
 
 dependencies {
-  if (isFG3()) {
+  implementation 'org.jetbrains:annotations:20.1.0'
+    if (isFG3()) {
     minecraft "net.minecraftforge:forge:${project.forge_mc_version}-${project.forge_version}"
   }
 

@@ -30,15 +30,17 @@ public class OreSpawn {
 		// Register the doClientStuff method for modloading
 		FMLJavaModLoadingContext.get().getModEventBus().addListener(this::doClientStuff);
 		// Register the doClientStuff method for modloading
-		FMLJavaModLoadingContext.get().getModEventBus().addListener(this::doServerStartTasks);
 
 		// Register ourselves for server and other game events we are interested in
-		MinecraftForge.EVENT_BUS.register(this);
+		MinecraftForge.EVENT_BUS.addListener(this::doServerStartTasks);
+		//MinecraftForge.EVENT_BUS.register(this);
 	}
 
 	private void setup(final FMLCommonSetupEvent event) {
+		OS4API.loadKnownConfigs();
 		ResourceLoader loader = new ResourceLoader();
 		loader.runLoaders();
+		OS4API.saveKnownConfigs();
 	}
 
 
@@ -50,7 +52,7 @@ public class OreSpawn {
 
 	private void processIMC(final InterModProcessEvent event) {
 	}
-	
+
 	private void doServerStartTasks(final FMLServerStartingEvent ev) {
 		OS4API.resolveData(ev.getServer().getDynamicRegistries());
 	}

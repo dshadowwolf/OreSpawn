@@ -36,8 +36,8 @@ public class Helpers {
 		}
 		return result;
 	}
-	public static @Nullable Path makePath(ResourceLocation rl, String type) {
-		@Nullable Path result;
+	public static Path makePath(ResourceLocation rl, String type) {
+		Path result;
 		switch (type) {
 			case Constants.FileBits.DISK:
 				result = Paths.get(Constants.FileBits.CONFIG_DIR, Constants.FileBits.OS4, rl.getPath() + ".json");
@@ -48,7 +48,7 @@ public class Helpers {
 				break;
 			default:
 				OreSpawn.LOGGER.error("Asked to resolve a path for {} of type {} -- I do not know how to do this", rl.toString(), type);
-				result = null;
+				result = Paths.get(Constants.FileBits.CONFIG_DIR, Constants.FileBits.OS4, "error.json");
 				break;
 		}
 		return result;

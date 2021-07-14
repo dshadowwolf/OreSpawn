@@ -11,22 +11,38 @@ import java.util.Locale;
 import java.util.stream.Collectors;
 
 import com.google.common.base.Joiner;
+
 import com.mcmoddev.orespawn.OreSpawn;
 import com.mcmoddev.orespawn.api.OS4API;
 import com.mcmoddev.orespawn.data.Constants;
 import com.mcmoddev.orespawn.data.Constants.FileTypes;
 
+import static com.mcmoddev.orespawn.data.Config.COMMON;
+import static com.mcmoddev.orespawn.utils.Helpers.makePath;
+
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.loading.moddiscovery.ModFile;
+import org.apache.commons.io.FileUtils;
+
 
 public class ResourceLoader {
 	public void runLoaders() {
 		List<ResourceLocation> foundFiles = new LinkedList<>();
-		ModList.get().getModFiles().stream().map(mfi -> iterateFiles(mfi.getFile()))
-				.forEach(lrl -> lrl.stream().forEach(rl -> foundFiles.add(rl)));
+		if (!COMMON.ignoreResources.get())
+			ModList.get().getModFiles().stream().map(mfi -> iterateFiles(mfi.getFile()))
+			.forEach(foundFiles::addAll);
 
-		iterateDiskFiles().stream().forEach(rl -> foundFiles.add(rl));
+		if (COMMON.extractToDisk.get()) {
+			for( ResourceLocation f : foundFiles) {
+				if (!OS4API.isKnownConfig(f)) {
+					extractFileToDisk(f);
+					OS4API.addKnownConfig(f);
+				}
+			}
+		}
+
+		foundFiles.addAll(iterateDiskFiles());
 
 		List<ResourceLocation> featuresFiles = foundFiles.stream().filter(rl -> rl.getPath().startsWith("features/"))
 				.collect(Collectors.toList());
@@ -50,36 +66,63 @@ public class ResourceLoader {
 		OreSpawn.LOGGER.info("> Spawn Configs:");
 		spawnConfigs.forEach(rl -> OreSpawn.LOGGER.info(">> {}", rl.toString()));
 
-		
+
 		if (Paths.get(Constants.FileBits.CONFIG_DIR, Constants.FileBits.OS4, Constants.FileBits.ALLOWED_MODS).toFile().exists()) {
 			OS4API.loadIntegrationWhitelist();
 		}
-		
+
 		featuresFiles.stream()
 		.filter(rl -> (OS4API.isAllowed(rl.getNamespace()) && OS4API.isAllowed(rl.getPath()+".json")))
 		.forEach(rl -> loadResourceLocation(rl, Constants.FileTypes.FEATURES));
-		
+
 		replacementsFiles.stream()
 		.filter(rl -> (OS4API.isAllowed(rl.getNamespace()) && OS4API.isAllowed(rl.getPath()+".json")))
 		.forEach(rl -> loadResourceLocation(rl, Constants.FileTypes.REPLACEMENTS));
-		
+
 		presetsFiles.stream()
 		.filter(rl -> (OS4API.isAllowed(rl.getNamespace()) && OS4API.isAllowed(rl.getPath()+".json")))
 		.forEach(rl -> loadResourceLocation(rl, Constants.FileTypes.PRESETS));
-		
+
 		spawnConfigs.stream()
 		.filter(rl -> (OS4API.isAllowed(rl.getNamespace()) && OS4API.isAllowed(rl.getPath()+".json")))
 		.forEach(rl -> loadResourceLocation(rl, Constants.FileTypes.SPAWN));
 	}
-	
+
+	private void extractFileToDisk(ResourceLocation f) {
+		Path root = makePath(f, Constants.FileBits.RESOURCE);
+		Path targetRoot = Constants.JSONPATH.toAbsolutePath();
+
+		String resourceType = f.getPath().contains("/")?getType(f.getPath()):"config";
+		String extractPath = resourceType.equals("config")?f.getNamespace()+"_"+f.getPath().replaceAll("/", "-"):
+			"config_data/"+resourceType+"/"+f.toString().replaceAll(":", "-").replaceAll("/", "_");
+		try {
+			FileUtils.copyInputStreamToFile(Files.newInputStream(root), Paths.get(targetRoot.toString(), extractPath).toFile());
+		} catch (IOException e) {
+			OreSpawn.LOGGER.error("Exception trying to copy the config {} out to the filesystem as required by the configuration settings: {}", f.toString(), e.getMessage());
+			e.printStackTrace();
+		}
+	}
+
+	private String getType(String path) {
+		String p = path.split("/")[0];
+		switch(p) {
+			case "features":
+			case "replacements":
+			case "presets":
+				return p.substring(0, p.length()-1); // strip the `s` off
+			default:
+				return "config";
+		}
+	}
+
 	private void loadResourceLocation(final ResourceLocation rl, final FileTypes type) {
 		if (rl.getNamespace().matches("orespawn-disk")) {
 			loadFromDisk(rl, type);
 		} else {
 			loadFromResource(rl, type);
-		}		
+		}
 	}
-	
+
 	private List<ResourceLocation> iterateFiles(ModFile modFile) {
 		try {
 			Path root = modFile.getLocator().findPath(modFile, Constants.FileBits.RESOURCE_PATH).toAbsolutePath();
@@ -87,7 +130,7 @@ public class ResourceLoader {
 			return Files.walk(root).map(path -> root.relativize(path.toAbsolutePath()))
 					.filter(path -> path.getNameCount() <= 64). // Make sure the depth is within bounds
 					filter(path -> path.toString().endsWith(".json")).map(path -> Joiner.on('/').join(path))
-					.map(path -> path.toString()).map(path -> path.substring(0, path.length() - 5))
+					.map(path -> path.substring(0, path.length() - 5))
 					.map(path -> new ResourceLocation(modFile.getModInfos().get(0).getModId(), path))
 					.collect(Collectors.toList());
 		} catch (IOException e) {
@@ -100,7 +143,7 @@ public class ResourceLoader {
 			Path diskPath = Paths.get(Constants.FileBits.CONFIG_DIR, Constants.FileBits.OS4).toAbsolutePath();
 			return Files.walk(diskPath).map(path -> diskPath.relativize(path.toAbsolutePath()))
 					.filter(path -> path.getNameCount() <= 64).filter(path -> path.toString().endsWith(".json"))
-					.map(path -> Joiner.on('/').join(path)).map(path -> path.toString())
+					.map(path -> Joiner.on('/').join(path))
 					.map(path -> path.toLowerCase(Locale.US)).map(path -> path.substring(0, path.length() - 5))
 					.map(path -> new ResourceLocation("orespawn-disk", path)).collect(Collectors.toList());
 		} catch (IOException e) {
@@ -161,18 +204,4 @@ public class ResourceLoader {
 			e.printStackTrace();
 		}
 	}
-	
-	private Path makePath(ResourceLocation rl, String type) {
-		switch(type) {
-		case Constants.FileBits.DISK:
-			return Paths.get(Constants.FileBits.CONFIG_DIR, Constants.FileBits.OS4, rl.getPath()+".json");
-		case Constants.FileBits.RESOURCE:
-			ModFile mf = ModList.get().getModFileById(rl.getNamespace()).getFile(); 
-			return mf.getLocator().findPath(mf, "assets", "orespawn4-data", rl.getPath()+".json");
-		default:
-			OreSpawn.LOGGER.error("Asked to resolve a path for {} of type {} -- I do not know how to do this", rl.toString(), type);
-			return null;
-		}
-	}
-
 }

@@ -24,6 +24,7 @@ public class Config {
 		public final ForgeConfigSpec.IntValue layersOfBedrock;
 		public final ForgeConfigSpec.BooleanValue extractToDisk;
 		public final ForgeConfigSpec.BooleanValue ignoreResources;
+		public final ForgeConfigSpec.BooleanValue ignoreDisk;
 
 		CommonConfig(ForgeConfigSpec.Builder builder) {
 			builder.push("general");
@@ -63,9 +64,10 @@ public class Config {
 				.comment("Do not attempt to locate or use any integration configurations when TRUE")
 				.translation("text.mmd_orespawn.config.ignore_integration")
 				.define("Ignore Integration", false);
+			ignoreDisk = builder
+				.comment("Do not attempt to load any config files that are on disk when TRUE")
+				.translation("text.mmd_orespawn.config.ignore_disk")
+				.define("Ignore Config Files On Disk", false);
 		}
-	}
-	public static void addKnownMod(final String modId) {
-		// TODO: Complete
 	}
 }

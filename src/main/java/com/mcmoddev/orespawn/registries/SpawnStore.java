@@ -1,12 +1,17 @@
 package com.mcmoddev.orespawn.registries;
 
+import java.util.Map;
+import java.util.TreeMap;
+
+import com.mcmoddev.orespawn.data.SpawnData;
+
 import net.minecraft.util.registry.DynamicRegistries;
 
 public class SpawnStore {
-
-	public static void add(String spawnName, Object build) {
-		// TODO Auto-generated method stub
-		
+	private static final Map<String, SpawnData> spawns = new TreeMap<>();
+	
+	public static void add(SpawnData spawnData) {
+		spawns.put(spawnData.getName(), spawnData);
 	}
 
 	public static void doResolveData(DynamicRegistries dynamicRegistries) {

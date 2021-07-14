@@ -2,6 +2,7 @@ package com.mcmoddev.orespawn.data;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mcmoddev.orespawn.OreSpawn;
 
 public class OS4BlockData {
 	private final String blockIdentifier;
@@ -10,10 +11,10 @@ public class OS4BlockData {
 	
 	public OS4BlockData(final String blockName, final String state, final int chance) {
 		this.blockIdentifier = blockName;
-		this.blockState = state==null?"":state;
+		this.blockState = state;
 		this.chance = chance;
 	}
-	
+
 	public OS4BlockData(final String blockName, final String state) {
 		this(blockName, state, 100);
 	}
@@ -39,8 +40,9 @@ public class OS4BlockData {
 		JsonObject actual = itemData.getAsJsonObject();
 		
 		int chance = actual.has("chance")?actual.get("chance").getAsInt():100;
-		String state = actual.has("state")?actual.get("state").getAsString():null;
+		String state = actual.has("state")?actual.get("state").getAsString():"";
 		String name = actual.has("name")?actual.get("name").getAsString():"i-am:a-missing-value";
+		OreSpawn.LOGGER.info("actual: {}\nchance: {} :: state: {} :: name: {}", actual.toString(), chance, state, name);
 		
 		return new OS4BlockData(name, state, chance);
 	}

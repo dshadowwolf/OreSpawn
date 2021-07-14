@@ -5,6 +5,7 @@ import com.mcmoddev.orespawn.registries.IReplacementEntry;
 import com.mcmoddev.orespawn.registries.PresetsRegistry;
 import com.mcmoddev.orespawn.registries.ReplacementsRegistry;
 
+import java.util.LinkedList;
 import java.util.List;
 
 import com.google.gson.JsonArray;
@@ -13,6 +14,7 @@ import com.google.gson.JsonObject;
 import com.mcmoddev.orespawn.OreSpawn;
 import com.mcmoddev.orespawn.api.OS4Feature;
 import com.mcmoddev.orespawn.data.OS4BlockData;
+import com.mcmoddev.orespawn.data.SpawnData;
 import com.mcmoddev.orespawn.data.Constants;
 
 public class SpawnBuilder {
@@ -28,6 +30,7 @@ public class SpawnBuilder {
 	
 	public SpawnBuilder(final String spawnName) {
 		myName = spawnName;
+		blocks = new LinkedList<>();
 	}
 
 	public SpawnBuilder addItem(final String itemName, final JsonElement itemData) {
@@ -55,7 +58,9 @@ public class SpawnBuilder {
 		case Constants.ConfigNames.BLOCKS:
 			JsonArray blocks = actualData.getAsJsonArray();
 			blocks.forEach(block -> {
-				this.addBlock(OS4BlockData.parseJsonData(block));
+				OS4BlockData bl = OS4BlockData.parseJsonData(block);
+				OreSpawn.LOGGER.info("Got Block Data: {} -- {} -- {}", bl.getBlockName(), bl.getBlockState(), bl.getChance());
+				this.addBlock(bl);
 			});
 			break;
 		case Constants.ConfigNames.PARAMETERS:
@@ -130,8 +135,7 @@ public class SpawnBuilder {
 		return dimensions;
 	}
 
-	public Object build() {
-		// TODO Auto-generated method stub
-		return null;
+	public SpawnData build() {
+		return new SpawnData(myName, active, doRetro, biomes, dimensions, replacements, feature, blocks);
 	}
 }

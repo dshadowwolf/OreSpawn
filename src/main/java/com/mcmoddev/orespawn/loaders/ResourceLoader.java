@@ -18,8 +18,9 @@ import com.mcmoddev.orespawn.data.Constants;
 import com.mcmoddev.orespawn.data.Constants.FileTypes;
 
 import static com.mcmoddev.orespawn.data.Config.COMMON;
-import static com.mcmoddev.orespawn.utils.Helpers.makePath;
+import static com.mcmoddev.orespawn.utils.Helpers.*;
 
+import com.mcmoddev.orespawn.utils.Helpers;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.loading.moddiscovery.ModFile;
@@ -144,8 +145,10 @@ public class ResourceLoader {
 			return Files.walk(diskPath).map(path -> diskPath.relativize(path.toAbsolutePath()))
 					.filter(path -> path.getNameCount() <= 64).filter(path -> path.toString().endsWith(".json"))
 					.map(path -> Joiner.on('/').join(path))
-					.map(path -> path.toLowerCase(Locale.US)).map(path -> path.substring(0, path.length() - 5))
-					.map(path -> new ResourceLocation("orespawn-disk", path)).collect(Collectors.toList());
+					.map(path -> path.toLowerCase(Locale.US))
+					.map(path -> path.substring(0, path.length() - 5))
+					.map(path -> String.format("orespawn-disk:%s",path))
+					.map(Helpers::makeInternalResourceLocation).collect(Collectors.toList());
 		} catch (IOException e) {
 			return Collections.emptyList();
 		}

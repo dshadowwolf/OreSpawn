@@ -31,7 +31,7 @@ public class Constants {
 		public static final String RESOURCE = "__RESOURCE__";
 		public static final String RESOURCE_PATH = "/assets/orespawn-data";
 	}
-	public static enum FileTypes {
-		FEATURES, SPAWN, PRESETS, REPLACEMENTS;
+	public enum FileTypes {
+		FEATURES, SPAWN, PRESETS, REPLACEMENTS
 	}
 }

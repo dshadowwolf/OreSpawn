@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import com.google.gson.JsonParser;
 import com.google.gson.JsonArray;
@@ -13,23 +14,17 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.Gson;
 
+import com.mcmoddev.orespawn.data.*;
 import net.minecraft.util.ResourceLocation;
 import org.apache.commons.io.FileUtils;
 
 import com.google.gson.stream.JsonReader;
 import com.mcmoddev.orespawn.OreSpawn;
-import com.mcmoddev.orespawn.builders.SpawnBuilder;
-import com.mcmoddev.orespawn.data.ConfigBlacklist;
-import com.mcmoddev.orespawn.data.Constants;
-import com.mcmoddev.orespawn.data.OS4BlockData;
-import com.mcmoddev.orespawn.registries.FeaturesRegistry;
-import com.mcmoddev.orespawn.registries.PresetsRegistry;
-import com.mcmoddev.orespawn.registries.ReplacementsRegistry;
-import com.mcmoddev.orespawn.registries.SpawnStore;
 
 import net.minecraft.util.registry.DynamicRegistries;
+import org.apache.commons.lang3.tuple.Pair;
 
-import static com.mcmoddev.orespawn.utils.Helpers.makeResourceLocation;
+import static com.mcmoddev.orespawn.utils.Helpers.makeInternalResourceLocation;
 
 public class OS4API {
 	private static final ConfigBlacklist configBlacklist = new ConfigBlacklist();
@@ -54,9 +49,11 @@ public class OS4API {
 
 		JsonObject topLevel = parser.parse(rawJson).getAsJsonObject();
 		if (topLevel.has("mods"))
-			topLevel.get("mods").getAsJsonArray().forEach(modid -> configBlacklist.addMod(modid.getAsString()));
+			for (JsonElement el : topLevel.get("mods").getAsJsonArray())
+				configBlacklist.addMod(el.getAsString());
 		if (topLevel.has("configs"))
-			topLevel.get("configs").getAsJsonArray().forEach(configFile -> configBlacklist.addConfig(configFile.getAsString()));
+			for (JsonElement el : topLevel.get("configs").getAsJsonArray())
+				configBlacklist.addConfig(el.getAsString());
 	}
 
 	private static JsonElement getParsedJson(InputStream stream) {
@@ -66,69 +63,11 @@ public class OS4API {
 		return parserToReturnFrom.parse(jsonReader);
 	}
 
-	public static void loadSpawnsFromStream(InputStream inFile) {
-		JsonObject rawJson = getParsedJson(inFile).getAsJsonObject();
-
-		String fileVersion = rawJson.get(Constants.ConfigNames.VERSION).getAsString();
-		JsonObject spawnWrapper = rawJson.get(Constants.ConfigNames.SPAWNS).getAsJsonObject();
-
-		OreSpawn.LOGGER.info("Loading JSON version {}", fileVersion);
-
-		// load the spawns
-		spawnWrapper.entrySet()
-		.forEach( entry -> {
-			String spawnName = entry.getKey();
-			OreSpawn.LOGGER.info("Loading spawn {} -- {}", spawnName, entry.getValue());
-			JsonObject spawnData = entry.getValue().getAsJsonObject();
-			SpawnBuilder theBuilder = new SpawnBuilder(spawnName);
-			spawnData.entrySet().forEach(spawn -> theBuilder.addItem(spawn.getKey(), spawn.getValue()));
-			SpawnStore.add(theBuilder.build());
-		});
-
-	}
-
 	public static void loadPresetsFromStream(InputStream inFile) {
 		JsonObject elements = getParsedJson(inFile).getAsJsonObject();
 
-		elements.entrySet()
-		.forEach( entry -> {
-			String entryZone = entry.getKey();
-			entry.getValue().getAsJsonObject().entrySet()
-			.forEach( subEnt -> {
-				String entryName = String.format("%s.%s", entryZone, subEnt.getKey());
-				PresetsRegistry.INSTANCE.addPreset(entryName, subEnt.getValue());
-			});
-
-		});
-	}
-
-	public static void loadReplacementsFromStream(InputStream inFile) {
-		JsonObject elements = getParsedJson(inFile).getAsJsonObject();
-
-		elements.entrySet()
-		.forEach( repl -> {
-			String replName = repl.getKey();
-			JsonArray replValues = repl.getValue().getAsJsonArray();
-			List<OS4BlockData> blocks = new LinkedList<>();
-			for( JsonElement el : replValues) {
-				JsonObject zz = el.getAsJsonObject();
-				String blName = zz.get("name").getAsString();
-				String state = zz.has("state")?zz.get("state").getAsString():"";
-				blocks.add(new OS4BlockData(blName, state));
-			}
-			ReplacementsRegistry.INSTANCE.addReplacement(replName, blocks);
-		});
-	}
-
-	public static void loadFeaturesFromStream(InputStream inFile) {
-		JsonArray elements = getParsedJson(inFile).getAsJsonArray();
-
-		elements.forEach( ent -> {
-			JsonObject entry = ent.getAsJsonObject();
-			String featureName = entry.get("name").getAsString();
-			String className = entry.get("class").getAsString();
-			FeaturesRegistry.INSTANCE.addFeature(featureName, className);
-		});
+		// let the storage actually do the load - it can do the recursion necessary to get the name and all that
+		PresetsStore.load(elements);
 	}
 
 	public static boolean isAllowed(final String checkName) {
@@ -155,8 +94,8 @@ public class OS4API {
 		}
 	}
 
-	private static void addModConfig(String itemIn) {
-		addKnownConfig(makeResourceLocation(itemIn));
+	private static void addModConfig(final String itemIn) {
+		addKnownConfig(makeInternalResourceLocation(itemIn));
 	}
 
 	public static void saveKnownConfigs() {
@@ -181,10 +120,80 @@ public class OS4API {
 		knownConfigs.add(config);
 	}
 
-	public static void resolveData(DynamicRegistries dynamicRegistries) {
-		FeaturesRegistry.INSTANCE.doDataResolution();
-		ReplacementsRegistry.INSTANCE.doDataResolution(dynamicRegistries);
-		SpawnStore.doResolveData(dynamicRegistries);
-		ReplacementsRegistry.INSTANCE.dump();
+	public static void resolveBlockData() {
+		// TODO: We get called from the proper event to resolve our data
+		// TODO: This means we get called at the start of RegistryEvent.Register<Item>, hopefully...
+	}
+
+	public static void resolveWorldData(DynamicRegistries dynamicRegistries) {
+		// TODO: We get called from the proper event to resolve our data
+		// TODO: This means we get called at the start of ServerStarting, hopefully...
+	}
+
+	public static void loadFeaturesFromStream(InputStream newInputStream) {
+		/*
+		  {
+		     "feature name" : "feature classpath",
+		     ...
+		  }
+		 */
+		JsonObject featuresIn = getParsedJson(newInputStream).getAsJsonObject();
+
+		featuresIn.entrySet().stream()
+			.map( baseEntry -> Pair.of(baseEntry.getKey(), baseEntry.getValue().getAsString()) )
+			.forEach( manipulated -> FeaturesStore.addNewFeature( manipulated.getKey(), manipulated.getValue()));
+	}
+
+	public static void loadReplacementsFromStream(InputStream newInputStream) {
+		/*
+		  {
+		     "replacement name" : [ { block data }, ... ],
+		     ...
+		  }
+		 */
+		JsonObject replacementsIn = getParsedJson(newInputStream).getAsJsonObject();
+
+		for ( Map.Entry<String, JsonElement> x : replacementsIn.entrySet()) {
+			String entryName = x.getKey();
+			JsonArray entries = x.getValue().getAsJsonArray();
+			List<BlockData> blocks = new LinkedList<>();
+			entries.forEach( entry -> blocks.add(BlockData.makeFromJson(entry.getAsJsonObject())));
+		}
+	}
+
+	public static void loadSpawnsFromStream(InputStream newInputStream) {
+		/*
+		   {
+		     "version": 2.0,
+		     "spawns": {
+		        "spawn name": {
+		          "feature": "feature name or $.preset",
+		          "replacements": "replacement name or $.preset or array",
+		          "dimensions": array - whitelist, with special values or $.preset,
+		          "biomes": object of whitelist/blacklist segments or $.preset,
+		          "blocks": array of block data or $.preset,
+		          "parameters": variable object or $.preset
+		        },
+		        ...
+		      }
+		    }
+		 */
+		JsonObject spawnFileData = getParsedJson(newInputStream).getAsJsonObject();
+
+		if (!spawnFileData.has("version") ||
+			(spawnFileData.has("version") && spawnFileData.get("version").getAsFloat() != 2.0)) {
+			OreSpawn.LOGGER.error("Spawn File does not have a version or is of an unhandled or unknown version. Ignoring.");
+			return;
+		}
+		if (!spawnFileData.has("spawns")) {
+			OreSpawn.LOGGER.error("Spawn File of incorrect format or has no spawns, ignoring.");
+			return;
+		}
+
+		OreSpawn.LOGGER.info("Loading Spawns, version {}", spawnFileData.get("version").getAsFloat());
+
+		JsonObject rawSpawnData = spawnFileData.get("spawns").getAsJsonObject();
+
+		rawSpawnData.entrySet().forEach( entry -> SpawnStore.loadFromJson(entry));
 	}
 }

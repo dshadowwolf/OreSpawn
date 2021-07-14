@@ -1,6 +1,7 @@
 package com.mcmoddev.orespawn.utils;
 
 import com.mcmoddev.orespawn.OreSpawn;
+import com.mcmoddev.orespawn.data.BlockData;
 import com.mcmoddev.orespawn.data.Constants;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -10,19 +11,39 @@ import net.minecraft.command.arguments.BlockStateParser;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.loading.moddiscovery.ModFile;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class Helpers {
-	public static boolean objectNotNull(Object obj) {
-		return obj != null;
+	public static ResourceLocation makeResourceLocationFlat(final String domain, final String path) {
+		return new ResourceLocation(domain, path);
 	}
 
-	public static ResourceLocation makeResourceLocation(String blockName) {
-		if(blockName.contains(":")) return new ResourceLocation(blockName);
-		else return new ResourceLocation("minecraft", blockName);
+	private static Pair<String, String> getNameBits(final String defaultDomain, final String toSplit) {
+		String domain;
+		String path;
+		if (toSplit.contains(":")) {
+			String[] bits = toSplit.split(":");
+			domain = bits[0];
+			path = bits[1];
+		} else {
+			domain = defaultDomain;
+			path = toSplit;
+		}
+
+		return Pair.of(domain, path);
+	}
+	public static ResourceLocation makeInternalResourceLocation(final String locIn) {
+		Pair<String, String> bits = getNameBits("orespawn", locIn);
+		return makeResourceLocationFlat(bits.getLeft(), bits.getRight());
+	}
+
+	public static ResourceLocation makeBlockResourceLocation(final String blockName) {
+		Pair<String, String> bits = getNameBits("minecraft", blockName);
+		return makeResourceLocationFlat(bits.getLeft(), bits.getRight());
 	}
 
 	public static @Nullable BlockState deserializeState(final String fullState) {
@@ -54,4 +75,13 @@ public class Helpers {
 		return result;
 	}
 
+	public static BlockState getBlockFor(BlockData blockData) {
+		try {
+			return new BlockStateParser(new StringReader(blockData.getBlockWithState()), false).parse(false).getState();
+		} catch (CommandSyntaxException e) {
+			OreSpawn.LOGGER.error("Error parsing blockstate for {} -- {}", blockData.getBlockWithState(), e.getMessage());
+			e.printStackTrace();
+			return null;
+		}
+	}
 }

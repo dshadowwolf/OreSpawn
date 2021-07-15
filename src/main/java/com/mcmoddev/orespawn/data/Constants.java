@@ -8,6 +8,8 @@ public class Constants {
 	public static final String CRASH_SECTION = "OreSpawn Version";
 	public static final Path SYSCONF = Paths.get(FileBits.CONFIG_DIR, FileBits.OS4, FileBits.SYSCONF);
 	public static final Path JSONPATH = Paths.get(FileBits.CONFIG_DIR, FileBits.OS4);
+	public static final String MODID = "mmd_orespawn";
+
 	public static class ConfigNames {
 
 		public static final String REPLACEMENT = "replaces";

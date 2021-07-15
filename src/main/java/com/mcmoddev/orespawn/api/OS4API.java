@@ -15,7 +15,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.Gson;
 
 import com.mcmoddev.orespawn.data.*;
+import net.minecraft.client.resources.ReloadListener;
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.event.AddReloadListenerEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.apache.commons.io.FileUtils;
 
 import com.google.gson.stream.JsonReader;
@@ -23,6 +27,9 @@ import com.mcmoddev.orespawn.OreSpawn;
 
 import net.minecraft.util.registry.DynamicRegistries;
 import org.apache.commons.lang3.tuple.Pair;
+
+import javax.annotation.Nonnull;
+import javax.annotation.ParametersAreNonnullByDefault;
 
 import static com.mcmoddev.orespawn.utils.Helpers.makeInternalResourceLocation;
 
@@ -121,13 +128,12 @@ public class OS4API {
 	}
 
 	public static void resolveBlockData() {
-		// TODO: We get called from the proper event to resolve our data
-		// TODO: This means we get called at the start of RegistryEvent.Register<Item>, hopefully...
+		ReplacementsStore.resolveBlocks();
+		SpawnStore.resolveSpawnBlocks();
 	}
 
 	public static void resolveWorldData(DynamicRegistries dynamicRegistries) {
-		// TODO: We get called from the proper event to resolve our data
-		// TODO: This means we get called at the start of ServerStarting, hopefully...
+		SpawnStore.resolveBiomesAndDimensions(dynamicRegistries);
 	}
 
 	public static void loadFeaturesFromStream(InputStream newInputStream) {
@@ -158,6 +164,7 @@ public class OS4API {
 			JsonArray entries = x.getValue().getAsJsonArray();
 			List<BlockData> blocks = new LinkedList<>();
 			entries.forEach( entry -> blocks.add(BlockData.makeFromJson(entry.getAsJsonObject())));
+			ReplacementsStore.add(entryName, blocks);
 		}
 	}
 

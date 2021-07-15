@@ -4,6 +4,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mcmoddev.orespawn.OreSpawn;
+import com.mcmoddev.orespawn.utils.Helpers;
+import net.minecraft.block.BlockState;
+import net.minecraft.util.WeightedList;
+import net.minecraft.util.registry.DynamicRegistries;
 
 import java.util.*;
 
@@ -53,6 +57,17 @@ public class SpawnStore {
 		});
 	}
 
+	public static void resolveSpawnBlocks() {
+		spawns.entrySet().forEach(entry -> {
+			entry.getValue().resolveBlocks();
+			entry.getValue().resolveReplacer();
+		});
+	}
+
+	public static void resolveBiomesAndDimensions(DynamicRegistries dynamicRegistries) {
+		spawns.entrySet().forEach(entry -> entry.getValue().resolveOtherData(dynamicRegistries));
+	}
+
 	public static class SpawnData {
 		private String featureName;
 		private String replacementName;
@@ -63,11 +78,22 @@ public class SpawnStore {
 		private String spawnName;
 		private List<BlockData> blocks;
 
+		private WeightedList<BlockState> blockStates;
+		private OS4Replacer replacer;
+		private BiomeMatcher biomes;
+		private DimensionMatcher dimensions;
+
+		private boolean resolvedBlocks = false;
+		private boolean resolvedReplacements = false;
+		private boolean resolvedOther = false;
+
+
 		public SpawnData() {
 			dimensionList = new LinkedList<>();
 			biomeWhitelist = new LinkedList<>();
 			biomeBlacklist = new LinkedList<>();
 			blocks = new LinkedList<>();
+			blockStates = new WeightedList<>();
 		}
 
 		public SpawnData setFeatureName(final String name) {
@@ -132,6 +158,25 @@ public class SpawnStore {
 		public SpawnData addBlock(final BlockData block) {
 			blocks.add(block);
 			return this;
+		}
+
+		public void resolveReplacer() {
+			if (resolvedReplacements) return;
+			replacer = ReplacementsStore.get(replacementName);
+			resolvedReplacements = true;
+		}
+
+		public void resolveBlocks() {
+			blocks.stream().forEach( blockData -> {
+				BlockState baseState = Helpers.deserializeState(blockData.getBlockWithState());
+				blockStates.addWeighted(baseState, blockData.getChance());
+			});
+			resolvedBlocks = true;
+		}
+
+		public void resolveOtherData(DynamicRegistries dynamicRegistries) {
+			biomes = BiomeMatcher.buildFromData(biomeBlacklist, biomeWhitelist, dynamicRegistries);
+			dimensions = DimensionMatcher.buildFromData(dimensionList, dynamicRegistries);
 		}
 	}
 }

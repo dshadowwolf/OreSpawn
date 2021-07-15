@@ -203,4 +203,8 @@ public class OS4API {
 
 		rawSpawnData.entrySet().forEach( entry -> SpawnStore.loadFromJson(entry));
 	}
+
+	public static void resolveFeatures() {
+		FeaturesStore.resolveFeatures();
+	}
 }

@@ -60,6 +60,7 @@ public class OreSpawn {
 	}
 
 	private void enqueueIMC(final InterModEnqueueEvent event) {
+		OS4API.resolveFeatures();
 	}
 
 	private void processIMC(final InterModProcessEvent event) {
